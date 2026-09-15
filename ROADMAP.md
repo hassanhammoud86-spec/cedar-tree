@@ -29,11 +29,51 @@ Each addition should stay a self-contained module + registry entry, keep the sam
 path-safety and timeout/output-cap conventions as the existing tools, and get its
 own unit tests.
 
-## Phase 3: Real-time voice + face interaction mode
+## Phase 3: Real-time voice + face interaction mode — 🚧 in progress / MVP built
 
-The long-term vision for Cedar Tree is a mode where a developer can talk to (and be
-seen by) their AI assistant live — speak a request, see/hear it acknowledged, and
-have it drive the same MCP tools this server exposes today.
+**Status: an MVP of the always-on client described below has been built** at
+[`apps/desktop-client`](apps/desktop-client) (Electron + TypeScript). See its
+[README](apps/desktop-client/README.md) for setup and a full list of
+limitations. Summary of what's real vs. still future work:
+
+**Implemented in the MVP:**
+- An always-on Electron desktop app, separate from the MCP server, as
+  described in this roadmap.
+- Continuous speech-to-text via Chromium's `webkitSpeechRecognition`, with a
+  live transcript shown in the window.
+- Text-to-speech via `SpeechSynthesis` for spoken replies.
+- A camera-based **presence heuristic** (frame-difference + variance
+  analysis on downsampled video) showing "detected" / "no motion" / "camera
+  off" — explicitly a lightweight stand-in for real face recognition, not a
+  trained model.
+- A small regex-based command router that maps a handful of spoken phrases
+  ("list files", "search code for X", "read file X", "git status", "run
+  tests") to **real** Cedar Tree tool calls, executed in-process against the
+  same compiled tool modules the MCP server uses, with results spoken back
+  and logged in the UI.
+- A portable Windows build via `electron-builder` (`npm run dist:win`).
+
+**Still future work (not in the MVP):**
+- **Real face recognition/identity**, not just motion presence — e.g.
+  `face-api.js` with a downloaded model, or the browser's experimental Shape
+  Detection API, to actually detect/recognize a face rather than infer
+  "something moved in frame."
+- **Wake-word detection** so the app can listen passively instead of
+  requiring a manual "Start listening" click.
+- **Full NLU** instead of fixed regex phrase matching, so arbitrary spoken
+  requests can be routed to the right tool (or to a live Copilot/agent
+  session) rather than only the handful of hardcoded phrases above.
+- **Multi-turn conversation memory** — today each spoken command is handled
+  completely independently; there's no session/context carried between
+  utterances.
+- **Streaming/incremental TTS and barge-in** (interrupting a spoken reply by
+  talking over it) for a more natural back-and-forth.
+- Tighter integration with an actual live Copilot/agent chat session, rather
+  than the MVP's fixed command router, once such an integration point/API is
+  available.
+
+The original problem statement and rationale for why this needs a *separate*
+client app (rather than more MCP server tools) are preserved below.
 
 **This is out of scope for the current MCP server and requires a separate,
 always-on client application** — not just additional MCP tools — because:
@@ -83,7 +123,9 @@ Key pieces the client app would need:
 6. **Privacy/safety controls**: explicit mic/camera on-off indicators, local-first
    processing where feasible, and no persistent recording without consent.
 
-This phase would likely live in a **new sibling project** (e.g. `cedar-tree-voice`)
-rather than inside this MCP server, since it has a fundamentally different runtime
-model (long-lived, device-attached, UI-driven) versus this server's on-demand,
-stdio, request/response tool model.
+This phase's MVP lives at [`apps/desktop-client`](apps/desktop-client) inside
+this repo (an npm workspace member) rather than a separate repository, since
+that made it easy to import the MCP server's compiled tool modules directly
+in-process. It still has a fundamentally different runtime model (long-lived,
+device-attached, UI-driven) from the server's on-demand, stdio,
+request/response tool model — see its README for details.

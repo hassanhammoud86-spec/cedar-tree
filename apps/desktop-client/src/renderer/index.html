@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Cedar Tree</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>🌲 Cedar Tree</h1>
+    <p class="subtitle">Phase 3 MVP - always-on voice + face client</p>
+  </header>
+
+  <section class="status-bar">
+    <div class="status-pill" id="status-mcp">MCP: loading…</div>
+    <div class="status-pill" id="status-mic">Mic: idle</div>
+    <div class="status-pill" id="status-face">Presence: camera off</div>
+  </section>
+
+  <main>
+    <section class="panel">
+      <h2>Voice</h2>
+      <div class="controls">
+        <button id="btn-mic">🎤 Start listening</button>
+        <button id="btn-speak-test">🔊 Test voice</button>
+      </div>
+      <div class="transcript" id="transcript">Say something like "list files" or "search code for TODO"…</div>
+    </section>
+
+    <section class="panel">
+      <h2>Camera presence (heuristic)</h2>
+      <div class="controls">
+        <button id="btn-camera">📷 Start camera</button>
+      </div>
+      <video id="video" autoplay muted playsinline width="240" height="180"></video>
+      <canvas id="canvas" width="64" height="48" style="display:none"></canvas>
+      <p class="hint">
+        This uses a lightweight frame-difference heuristic, not a trained face
+        recognition model. See README for the tradeoffs and how to swap in a
+        real detector later.
+      </p>
+    </section>
+
+    <section class="panel wide">
+      <h2>Tool activity log</h2>
+      <div class="log" id="log"></div>
+    </section>
+  </main>
+
+  <script type="module" src="renderer.js"></script>
+</body>
+</html>

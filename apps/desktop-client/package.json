@@ -1,0 +1,38 @@
+{
+  "name": "cedar-tree-desktop-client",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cedar Tree Phase 3 MVP: an always-on Electron desktop client providing voice (speech-to-text/text-to-speech) and camera-based presence detection, wired to call Cedar Tree MCP tools in-process.",
+  "main": "dist/main.js",
+  "scripts": {
+    "build:main": "tsc -p tsconfig.main.json",
+    "build:renderer": "tsc -p tsconfig.renderer.json",
+    "copy-assets": "node scripts/copy-assets.js",
+    "build": "npm run build:main && npm run build:renderer && npm run copy-assets",
+    "start": "npm run build && electron .",
+    "dist:win": "npm run build && electron-builder --win portable --publish=never"
+  },
+  "dependencies": {
+    "cedar-tree": "file:../.."
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.7.2"
+  },
+  "build": {
+    "appId": "dev.cedartree.desktopclient",
+    "productName": "CedarTree",
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "portable"
+    },
+    "directories": {
+      "output": "release"
+    }
+  }
+}
