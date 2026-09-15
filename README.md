@@ -89,7 +89,7 @@ at the solution root (or `%USERPROFILE%\.mcp.json` for a user-wide config):
 ```json
 {
   "inputs": [],
-  "servers": {
+  "mcpServers": {
     "cedar-tree": {
       "type": "stdio",
       "command": "node",

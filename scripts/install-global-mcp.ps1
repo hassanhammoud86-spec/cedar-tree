@@ -96,7 +96,7 @@ function New-CedarTreeServerDef {
 function Merge-McpConfig {
   param(
     [string]$ConfigPath,
-    [string]$TopLevelKey  # "servers" for both VS Code and current Visual Studio format
+    [string]$TopLevelKey
   )
 
   $dir = Split-Path -Parent $ConfigPath
@@ -123,6 +123,16 @@ function Merge-McpConfig {
 
   $config[$TopLevelKey]["cedar-tree"] = New-CedarTreeServerDef
 
+  # Earlier installer versions wrote the Visual Studio entry to VS Code's
+  # "servers" key. Remove only that stale Cedar Tree duplicate; keep any
+  # legitimate VS Code server entries intact.
+  if ($TopLevelKey -eq "mcpServers" -and $config.Contains("servers") -and
+      $config["servers"] -is [System.Collections.IDictionary] -and
+      $config["servers"].Contains("cedar-tree")) {
+    $config["servers"].Remove("cedar-tree")
+    if ($config["servers"].Count -eq 0) { $config.Remove("servers") }
+  }
+
   $json = $config | ConvertTo-Json -Depth 20
   Set-Content -Path $ConfigPath -Value $json -Encoding utf8
   Write-Info "Registered 'cedar-tree' server in $ConfigPath"
@@ -132,9 +142,11 @@ function Merge-McpConfig {
 $vscodeMcpPath = Join-Path $env:APPDATA "Code\User\mcp.json"
 Merge-McpConfig -ConfigPath $vscodeMcpPath -TopLevelKey "servers"
 
-# 2. Visual Studio global user config: %USERPROFILE%\.mcp.json (top-level key: "servers")
+# 2. Visual Studio global user config: %USERPROFILE%\.mcp.json.
+# Visual Studio uses the legacy-compatible "mcpServers" key, unlike VS Code's
+# current "servers" schema.
 $vsMcpPath = Join-Path $env:USERPROFILE ".mcp.json"
-Merge-McpConfig -ConfigPath $vsMcpPath -TopLevelKey "servers"
+Merge-McpConfig -ConfigPath $vsMcpPath -TopLevelKey "mcpServers"
 
 Write-Info ""
 Write-Info "Done. Cedar Tree is now registered globally for this Windows user account:"
