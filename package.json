@@ -1,0 +1,39 @@
+{
+  "name": "cedar-tree",
+  "version": "0.1.0",
+  "description": "Cedar Tree - an MCP (Model Context Protocol) server that aggregates AI dev tools/skills for use with GitHub Copilot in Visual Studio / VS Code.",
+  "type": "module",
+  "main": "dist/server.js",
+  "bin": {
+    "cedar-tree": "dist/server.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "dev": "tsc -p tsconfig.json --watch",
+    "test": "node --import tsx --test \"test/**/*.test.ts\""
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "copilot",
+    "ai-tools"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "@vscode/ripgrep": "^1.15.9",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  }
+}
