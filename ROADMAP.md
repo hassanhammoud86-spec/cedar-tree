@@ -124,8 +124,23 @@ Key pieces the client app would need:
    processing where feasible, and no persistent recording without consent.
 
 This phase's MVP lives at [`apps/desktop-client`](apps/desktop-client) inside
-this repo (an npm workspace member) rather than a separate repository, since
-that made it easy to import the MCP server's compiled tool modules directly
-in-process. It still has a fundamentally different runtime model (long-lived,
-device-attached, UI-driven) from the server's on-demand, stdio,
-request/response tool model — see its README for details.
+this repo as a standalone npm project (its build step copies the MCP
+server's compiled `dist/` output into its own bundle rather than depending on
+it via npm workspaces, to keep `electron-builder` packaging isolated) rather
+than a separate repository, since that still made it straightforward to
+import the MCP server's compiled tool modules directly in-process. It still
+has a fundamentally different runtime model (long-lived, device-attached,
+UI-driven) from the server's on-demand, stdio, request/response tool model —
+see its README for details.
+
+## Phase 4: Global MCP registration & Copilot autopilot pickup
+
+**Status: done.** [`scripts/install-global-mcp.ps1`](scripts/install-global-mcp.ps1)
+registers Cedar Tree once for the current Windows user, so it's available to
+Copilot agent/autopilot mode in every VS Code workspace and Visual Studio
+solution without per-project `.vscode/mcp.json` setup. It merges a
+`cedar-tree` entry into VS Code's global `%APPDATA%\Code\User\mcp.json` and
+Visual Studio's global `%USERPROFILE%\.mcp.json`, is idempotent (safe to
+re-run), and preserves any other MCP servers already configured in those
+files. See the root [README](README.md#registering-cedar-tree-globally-one-time-all-workspaces)
+for usage.

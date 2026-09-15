@@ -104,6 +104,31 @@ at the solution root (or `%USERPROFILE%\.mcp.json` for a user-wide config):
 
 Reopen the solution and Copilot Chat's tool picker should list Cedar Tree's tools.
 
+## Registering Cedar Tree globally (one-time, all workspaces)
+
+Instead of adding `.vscode/mcp.json` to every project, you can register Cedar Tree
+once for your Windows user account so it's automatically available to Copilot agent
+mode in **every** VS Code workspace and Visual Studio solution:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\install-global-mcp.ps1
+```
+
+This writes/merges a `cedar-tree` entry into:
+
+- VS Code's global user config: `%APPDATA%\Code\User\mcp.json`
+- Visual Studio's global user config: `%USERPROFILE%\.mcp.json`
+
+It's **idempotent** — safe to re-run any time (e.g. after moving the repo or
+rebuilding), and it only touches the `cedar-tree` entry, leaving any other MCP
+servers already configured in those files untouched. Restart VS Code / Visual
+Studio (or reload the window) afterwards to pick up the change.
+
+Once registered, GitHub Copilot's **agent/autopilot mode** in both editors
+auto-discovers every server listed in the applicable `mcp.json`(s) — no extra
+enablement step is required beyond the one-time restart, and no per-project setup
+is needed for future workspaces.
+
 ## Project layout
 
 ```

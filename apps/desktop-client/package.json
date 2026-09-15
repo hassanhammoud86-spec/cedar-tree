@@ -12,27 +12,30 @@
     "start": "npm run build && electron .",
     "dist:win": "npm run build && electron-builder --win portable --publish=never"
   },
-  "dependencies": {
-    "cedar-tree": "file:../.."
-  },
   "devDependencies": {
     "@types/node": "^22.10.2",
     "electron": "^33.2.1",
     "electron-builder": "^25.1.8",
     "typescript": "^5.7.2"
   },
+  "author": "Cedar Tree",
   "build": {
     "appId": "dev.cedartree.desktopclient",
     "productName": "CedarTree",
+    "electronVersion": "33.4.11",
     "files": [
       "dist/**/*",
       "package.json"
     ],
     "win": {
-      "target": "portable"
+      "target": "portable",
+      "signAndEditExecutable": false
     },
     "directories": {
       "output": "release"
     }
+  },
+  "allowScripts": {
+    "electron@33.4.11": true
   }
 }

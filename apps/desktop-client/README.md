@@ -41,14 +41,22 @@ simple router, not full NLU (see Limitations/Future work).
 
 ## Setup & running
 
-From the **repository root** (this app is an npm workspace member):
+This app is a **standalone npm project** (not an npm workspace member of the
+root `cedar-tree` package) — its build script bundles the MCP server's
+compiled `dist/` output directly into its own `dist/cedar-tree/` folder
+(see `scripts/copy-assets.js`), so there's no live dependency link between
+the two `node_modules` trees. Build the root project first, then this app:
 
 ```powershell
-npm install        # installs the MCP server's deps + this app's deps (Electron etc.)
-npm run build       # builds the MCP server (dist/) that this app imports from
+# 1. From the repository root: build the MCP server tool modules
+npm install
+npm run build
+
+# 2. From apps/desktop-client: install this app's own deps and build/run it
 cd apps\desktop-client
-npm run build        # compiles main/preload/renderer TypeScript + copies HTML/CSS
-npm start            # builds again and launches the Electron window
+npm install           # installs Electron/electron-builder/TypeScript for this app only
+npm run build          # compiles main/preload/renderer + copies HTML/CSS + bundles ../../dist -> dist/cedar-tree
+npm start              # builds again and launches the Electron window
 ```
 
 On first launch, your OS will likely prompt for microphone/camera permission
@@ -59,12 +67,36 @@ which auto-approves Chromium's internal `media` permission request).
 
 ```powershell
 cd apps\desktop-client
+$env:CSC_IDENTITY_AUTO_DISCOVERY = "false"   # skip electron-builder's mac code-signing tool download
 npm run dist:win
 ```
 
-This uses `electron-builder` to produce a portable executable under
-`apps/desktop-client/release/`. See the root `scripts/` folder or the task
-report for where a prebuilt copy was placed on the Desktop, if applicable.
+This uses `electron-builder` to produce a portable executable at
+`apps/desktop-client/release/CedarTree <version>.exe` (typically ~70-75 MB,
+since it bundles a full Chromium/Electron runtime). The `build.win`
+config sets `signAndEditExecutable: false` since this is an unsigned,
+locally-built portable app — no code-signing certificate is used or
+required.
+
+**Notes on this environment's packaging quirks** (useful if you hit similar
+errors elsewhere):
+- Keep this app's `node_modules` separate from the root project's (i.e. do
+  **not** declare it as an npm workspace member and do **not** add
+  `cedar-tree` as an npm dependency). `electron-builder`'s "installing
+  production dependencies" pruning step does not play well with hoisted
+  npm-workspace `node_modules` layouts — it was observed to delete its own
+  `app-builder-bin` devDependency from a hoisted root `node_modules`,
+  causing `spawn ...app-builder.exe ENOENT`. A fully standalone
+  `node_modules` for this app avoids that entirely.
+- `CSC_IDENTITY_AUTO_DISCOVERY=false` plus `signAndEditExecutable: false`
+  avoids a `winCodeSign` binary download that can fail to extract on
+  Windows accounts without the "create symbolic links" privilege
+  (Developer Mode off / non-admin), since that binary isn't needed for an
+  unsigned portable build anyway.
+
+A prebuilt copy of the `.exe` (plus this README) may already be sitting on
+your Desktop at `C:\Users\hassa\OneDrive\Desktop\CedarTree\` — see the task
+report for confirmation of whether that step was completed.
 
 ## How it relates to the MCP server
 
@@ -72,9 +104,10 @@ The MCP server (`../../src`) is what GitHub Copilot talks to over stdio
 inside VS Code / Visual Studio — it has no UI and no audio/video access, by
 design (see root README). This desktop client is a *different* program that:
 
-1. Imports the exact same compiled tool handlers (`cedar-tree/dist/tools/*`)
-   the MCP server registers, so "list files" here runs the identical
-   `run_shell` implementation Copilot would use.
+1. Imports the exact same compiled tool handlers (bundled into
+   `dist/cedar-tree/tools/*` at build time from the root project's own
+   `dist/`), so "list files" here runs the identical `run_shell`
+   implementation Copilot would use.
 2. Adds the voice/camera/UI layer the MCP protocol itself doesn't support.
 
 They are not required to run together — you can use Copilot + the MCP server

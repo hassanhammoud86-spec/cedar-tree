@@ -14,5 +14,5 @@
     "declaration": false,
     "sourceMap": true
   },
-  "include": ["src/main.ts", "src/preload.ts", "src/mcp-bridge.ts", "src/command-router.ts", "src/types/cedar-tree.d.ts"]
+  "include": ["src/main.ts", "src/preload.ts", "src/mcp-bridge.ts", "src/command-router.ts"]
 }

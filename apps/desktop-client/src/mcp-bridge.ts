@@ -31,9 +31,17 @@ async function loadToolHandlers(): Promise<Record<string, ToolHandler>> {
   };
 
   // cedar-tree is an ESM package (compiled dist/), imported dynamically so
-  // this CommonJS main-process file can consume it.
-  const { allToolModules } = await import("cedar-tree/dist/tools/index.js");
-  for (const registerModule of allToolModules as Array<(r: FakeToolRegistry) => void>) {
+  // this CommonJS main-process file can consume it. The module path is
+  // only materialized at build time (scripts/copy-assets.js copies the
+  // repo root's dist/ into apps/desktop-client/dist/cedar-tree/), so it's
+  // read from a plain variable rather than a string literal - that keeps
+  // TypeScript from trying (and failing) to statically resolve a file that
+  // doesn't exist until after the build's copy-assets step runs.
+  const cedarTreeToolsPath: string = "./cedar-tree/tools/index.js";
+  const { allToolModules } = (await import(cedarTreeToolsPath)) as {
+    allToolModules: Array<(r: FakeToolRegistry) => void>;
+  };
+  for (const registerModule of allToolModules) {
     registerModule(fakeRegistry);
   }
 
