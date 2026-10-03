@@ -11,6 +11,7 @@ import { register as registerRunTests } from "./run-tests.js";
 import { register as registerGitOps } from "./git-ops.js";
 import { register as registerWeb } from "./web.js";
 import { register as registerOpenTarget } from "./open-target.js";
+import { register as registerCopilotBridge } from "./copilot-bridge.js";
 
 export const allToolModules: ToolModule[] = [
   registerFileIo,
@@ -20,4 +21,5 @@ export const allToolModules: ToolModule[] = [
   registerGitOps,
   registerWeb,
   registerOpenTarget,
+  registerCopilotBridge,
 ];

@@ -21,8 +21,9 @@ export async function routeCommand(transcript: string): Promise<RouteResult> {
   let match: RegExpMatchArray | null;
 
   try {
+    const toCopilot = /^(?:please\s+)?(?:ask|tell)\s+copilot\b/i.test(text);
     // "open X", "launch X", "start X", optionally "... in visual studio".
-    if ((match = text.match(/^(?:please\s+)?(?:open|launch|start|run)\s+(.+?)[.!]*$/i))) {
+    if (!toCopilot && (match = text.match(/^(?:please\s+)?(?:open|launch|start)\s+(.+?)[.!]*$/i))) {
       let target = match[1].trim().replace(/^(the|my|a)\s+/i, "");
       let inVisualStudio = false;
       const inVs = target.match(/^(.+?)\s+(?:in|with|using)\s+(?:visual studio|vs)(?:\s+2026)?$/i);
@@ -30,7 +31,7 @@ export async function routeCommand(transcript: string): Promise<RouteResult> {
         target = inVs[1].trim();
         inVisualStudio = true;
       }
-      if (!/^tests?$/i.test(target)) {
+      if (!/^tests?$/i.test(target) && target.split(/\s+/).length <= 4) {
         const result = await callTool("open_target", { target, inVisualStudio });
         const ok = !result?.isError;
         return {
@@ -74,12 +75,22 @@ export async function routeCommand(transcript: string): Promise<RouteResult> {
     return { transcript, matchedTool: null, spokenReply: `Something went wrong: ${message}` };
   }
 
-  return {
-    transcript,
-    matchedTool: null,
-    spokenReply:
-      "Sorry, I didn't understand that. Try: open Visual Studio, open the project in Visual Studio, open notepad, open a website, list files, search code for something, read file package dot json, git status, or run tests. For anything else, ask Copilot agent in Visual Studio, which has all Cedar Tree tools.",
-  };
+  // Anything not understood locally is an order for Copilot agent in Visual
+  // Studio, which has every Cedar Tree tool and can handle free-form requests.
+  try {
+    const prompt = text.replace(/^(?:please\s+)?(?:ask|tell)\s+copilot\s+(?:to\s+)?/i, "");
+    const result = await callTool("send_to_copilot", { text: prompt });
+    const ok = !result?.isError;
+    return {
+      transcript,
+      matchedTool: "send_to_copilot",
+      spokenReply: ok ? "Sent to Copilot in Visual Studio." : textOf(result),
+      raw: result,
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { transcript, matchedTool: null, spokenReply: `Could not reach Copilot: ${message}` };
+  }
 }
 
 function textOf(result: any): string {
