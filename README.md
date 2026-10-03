@@ -88,8 +88,7 @@ at the solution root (or `%USERPROFILE%\.mcp.json` for a user-wide config):
 
 ```json
 {
-  "inputs": [],
-  "mcpServers": {
+  "servers": {
     "cedar-tree": {
       "type": "stdio",
       "command": "node",
@@ -159,3 +158,11 @@ test/
 
 See `ROADMAP.md` for planned future phases, including a real-time voice/face
 interaction mode.
+
+## Use Cedar Tree as an agent in Visual Studio 2026 / VS Code
+
+Run `scripts\install-global-mcp.ps1` once. It registers the MCP server (`servers` key in `%USERPROFILE%\.mcp.json` and VS Code `mcp.json`) and installs the custom agent `agents\cedar-tree.agent.md` to `%USERPROFILE%\.github\agents`.
+
+In Visual Studio: restart, open Copilot Chat, pick **Cedar Tree** in the agent (Chat mode) dropdown, then in the Tools panel enable the `cedar-tree` server and tick all its tools. Use Autopilot mode to avoid approval prompts.
+
+Extra tools: `open_target` (open apps, files, URLs, folders) and `send_to_copilot` (pipe a text order into the VS Copilot Chat via UI Automation; used by the desktop client for unmatched orders).

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Registers the Cedar Tree MCP server globally for the current Windows user, so it
   is automatically available to GitHub Copilot agent mode in every workspace opened
@@ -57,7 +57,7 @@ function ConvertTo-OrderedHashtable {
     }
     if ($InputObject -is [string]) { return $InputObject }
     if ($InputObject -is [System.Collections.IEnumerable]) {
-      return @($InputObject | ForEach-Object { ConvertTo-OrderedHashtable $_ })
+      return ,@($InputObject | ForEach-Object { ConvertTo-OrderedHashtable $_ })
     }
     if ($InputObject -is [psobject] -and $InputObject.PSObject.Properties.Count -gt 0) {
       $hash = [ordered]@{}
@@ -123,14 +123,14 @@ function Merge-McpConfig {
 
   $config[$TopLevelKey]["cedar-tree"] = New-CedarTreeServerDef
 
-  # Earlier installer versions wrote the Visual Studio entry to VS Code's
-  # "servers" key. Remove only that stale Cedar Tree duplicate; keep any
-  # legitimate VS Code server entries intact.
-  if ($TopLevelKey -eq "mcpServers" -and $config.Contains("servers") -and
-      $config["servers"] -is [System.Collections.IDictionary] -and
-      $config["servers"].Contains("cedar-tree")) {
-    $config["servers"].Remove("cedar-tree")
-    if ($config["servers"].Count -eq 0) { $config.Remove("servers") }
+  # A previous installer version wrongly wrote the entry under "mcpServers".
+  # Visual Studio reads "servers", so remove only that stale Cedar Tree copy
+  # and keep any other servers the user has configured.
+  if ($config.Contains("mcpServers") -and
+      $config["mcpServers"] -is [System.Collections.IDictionary] -and
+      $config["mcpServers"].Contains("cedar-tree")) {
+    $config["mcpServers"].Remove("cedar-tree")
+    if ($config["mcpServers"].Count -eq 0) { $config.Remove("mcpServers") }
   }
 
   $json = $config | ConvertTo-Json -Depth 20
@@ -143,15 +143,27 @@ $vscodeMcpPath = Join-Path $env:APPDATA "Code\User\mcp.json"
 Merge-McpConfig -ConfigPath $vscodeMcpPath -TopLevelKey "servers"
 
 # 2. Visual Studio global user config: %USERPROFILE%\.mcp.json.
-# Visual Studio uses the legacy-compatible "mcpServers" key, unlike VS Code's
-# current "servers" schema.
+# Visual Studio documents the same top-level "servers" key as VS Code.
 $vsMcpPath = Join-Path $env:USERPROFILE ".mcp.json"
-Merge-McpConfig -ConfigPath $vsMcpPath -TopLevelKey "mcpServers"
+Merge-McpConfig -ConfigPath $vsMcpPath -TopLevelKey "servers"
+
+# 3. Cedar Tree custom agent for the Copilot agent picker. Visual Studio 18.4+
+# and VS Code read user-level agents from %USERPROFILE%\.github\agents.
+$agentSource = Join-Path $RepoPath "agents\cedar-tree.agent.md"
+$agentDir = Join-Path $env:USERPROFILE ".github\agents"
+if (Test-Path $agentSource) {
+  New-Item -ItemType Directory -Force -Path $agentDir | Out-Null
+  Copy-Item $agentSource (Join-Path $agentDir "cedar-tree.agent.md") -Force
+  Write-Info "Installed 'Cedar Tree' agent in $agentDir"
+} else {
+  Write-Info "WARNING: $agentSource not found; the agent was not installed."
+}
 
 Write-Info ""
 Write-Info "Done. Cedar Tree is now registered globally for this Windows user account:"
 Write-Info "  - VS Code:        $vscodeMcpPath"
 Write-Info "  - Visual Studio:  $vsMcpPath"
+Write-Info "  - Agent picker:   $agentDir\cedar-tree.agent.md"
 Write-Info ""
 Write-Info "Restart VS Code / Visual Studio (or reload the window) to pick up the change."
-Write-Info "Copilot agent/autopilot mode auto-discovers servers listed here - no further action needed."
+Write-Info "Then pick 'Cedar Tree' in the Copilot Chat agent picker (or type @Cedar Tree)."
