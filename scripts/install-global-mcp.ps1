@@ -85,7 +85,7 @@ if (-not (Test-Path $serverEntryPath)) {
 function New-CedarTreeServerDef {
   [ordered]@{
     type    = "stdio"
-    command = "node"
+    command = $(if (Test-Path "$env:ProgramFiles\nodejs\node.exe") { "$env:ProgramFiles\nodejs\node.exe" } else { "node" })
     args    = @($serverEntryPath)
     env     = [ordered]@{
       CEDAR_TREE_WORKSPACE_ROOT = $WorkspaceRoot
