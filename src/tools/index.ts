@@ -12,6 +12,7 @@ import { register as registerGitOps } from "./git-ops.js";
 import { register as registerWeb } from "./web.js";
 import { register as registerOpenTarget } from "./open-target.js";
 import { register as registerCopilotBridge } from "./copilot-bridge.js";
+import { register as registerOllama } from "./ollama.js";
 
 export const allToolModules: ToolModule[] = [
   registerFileIo,
@@ -22,4 +23,5 @@ export const allToolModules: ToolModule[] = [
   registerWeb,
   registerOpenTarget,
   registerCopilotBridge,
+  registerOllama,
 ];

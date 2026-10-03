@@ -166,3 +166,7 @@ Run `scripts\install-global-mcp.ps1` once. It registers the MCP server (`servers
 In Visual Studio: restart, open Copilot Chat, pick **Cedar Tree** in the agent (Chat mode) dropdown, then in the Tools panel enable the `cedar-tree` server and tick all its tools. Use Autopilot mode to avoid approval prompts.
 
 Extra tools: `open_target` (open apps, files, URLs, folders) and `send_to_copilot` (pipe a text order into the VS Copilot Chat via UI Automation; used by the desktop client for unmatched orders).
+
+### Local Ollama models
+
+Tools `ollama_models`, `ollama_ask` and `ollama_ensemble` use every model installed in your local Ollama (auto-discovered via `http://127.0.0.1:11434`, override with `OLLAMA_HOST`). Ask one model, route by task kind, or run several together and let a judge merge the answers.
