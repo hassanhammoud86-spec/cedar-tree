@@ -137,3 +137,7 @@ video {
   padding-bottom: 6px;
   border-bottom: 1px solid #1c2a24;
 }
+
+#text-form { margin-top: 12px; display: flex; gap: 8px; }
+#text-input { flex: 1; padding: 10px 12px; border-radius: 8px; border: 1px solid #2c4a3c; background: #0f1a15; color: inherit; font: inherit; }
+#text-input:focus { outline: 2px solid #2e9d6b; }

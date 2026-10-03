@@ -21,6 +21,27 @@ export async function routeCommand(transcript: string): Promise<RouteResult> {
   let match: RegExpMatchArray | null;
 
   try {
+    // "open X", "launch X", "start X", optionally "... in visual studio".
+    if ((match = text.match(/^(?:please\s+)?(?:open|launch|start|run)\s+(.+?)[.!]*$/i))) {
+      let target = match[1].trim().replace(/^(the|my|a)\s+/i, "");
+      let inVisualStudio = false;
+      const inVs = target.match(/^(.+?)\s+(?:in|with|using)\s+(?:visual studio|vs)(?:\s+2026)?$/i);
+      if (inVs) {
+        target = inVs[1].trim();
+        inVisualStudio = true;
+      }
+      if (!/^tests?$/i.test(target)) {
+        const result = await callTool("open_target", { target, inVisualStudio });
+        const ok = !result?.isError;
+        return {
+          transcript,
+          matchedTool: "open_target",
+          spokenReply: ok ? `Opening ${target}${inVisualStudio ? " in Visual Studio" : ""}.` : textOf(result),
+          raw: result,
+        };
+      }
+    }
+
     if (/^(list|show)( the)? files?$/i.test(text)) {
       const command = process.platform === "win32" ? "dir" : "ls -la";
       const result = await callTool("run_shell", { command });
@@ -57,7 +78,7 @@ export async function routeCommand(transcript: string): Promise<RouteResult> {
     transcript,
     matchedTool: null,
     spokenReply:
-      "Sorry, I didn't understand that. Try saying: list files, search code for something, read file package dot json, git status, or run tests.",
+      "Sorry, I didn't understand that. Try: open Visual Studio, open the project in Visual Studio, open notepad, open a website, list files, search code for something, read file package dot json, git status, or run tests. For anything else, ask Copilot agent in Visual Studio, which has all Cedar Tree tools.",
   };
 }
 

@@ -24,7 +24,11 @@
         <button id="btn-mic">🎤 Start listening</button>
         <button id="btn-speak-test">🔊 Test voice</button>
       </div>
-      <div class="transcript" id="transcript">Say something like "list files" or "search code for TODO"…</div>
+      <div class="transcript" id="transcript">Say or type something like "open Visual Studio", "list files" or "search code for TODO"…</div>
+      <form id="text-form" class="controls" autocomplete="off">
+        <input id="text-input" type="text" placeholder="Type an order, e.g. open the project in Visual Studio" />
+        <button id="btn-send" type="submit">➤ Send</button>
+      </form>
     </section>
 
     <section class="panel">

@@ -115,6 +115,18 @@ btnMic.addEventListener("click", () => {
   }
 });
 
+const textForm = document.getElementById("text-form") as HTMLFormElement;
+const textInput = document.getElementById("text-input") as HTMLInputElement;
+
+textForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const text = textInput.value.trim();
+  if (!text) return;
+  textInput.value = "";
+  transcriptEl.textContent = text;
+  void handleFinalTranscript(text);
+});
+
 btnSpeakTest.addEventListener("click", () => {
   speak("Hello, I am Cedar Tree. I can list files, search code, read files, check git status, or run tests.");
 });
