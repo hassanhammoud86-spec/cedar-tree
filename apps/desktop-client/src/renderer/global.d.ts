@@ -7,6 +7,9 @@
 export {};
 
 interface CedarTreeBridge {
+  startSpeech(): Promise<{ ok: boolean }>;
+  stopSpeech(): Promise<{ ok: boolean }>;
+  onSpeechEvent(cb: (event: { type: string; text: string }) => void): void;
   listTools(): Promise<{ ok: boolean; tools?: string[]; error?: string }>;
   callTool(name: string, args: unknown): Promise<{ ok: boolean; result?: unknown; error?: string }>;
   runCommand(transcript: string): Promise<{

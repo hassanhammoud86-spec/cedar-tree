@@ -7,6 +7,7 @@ import { app, BrowserWindow, session } from "electron";
 import * as path from "node:path";
 import { registerIpcHandlers } from "./mcp-bridge";
 import { registerCommandRouterIpcHandler } from "./command-router";
+import { registerSpeechIpcHandlers, stopSpeech } from "./speech";
 
 // Default the Cedar Tree workspace root (used by read_file/write_file/
 // run_shell/run_tests/git_ops) to the repository root - three directories
@@ -42,12 +43,15 @@ app.whenReady().then(() => {
 
   registerIpcHandlers();
   registerCommandRouterIpcHandler();
+  registerSpeechIpcHandlers();
   createWindow();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });
+
+app.on("before-quit", stopSpeech);
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();

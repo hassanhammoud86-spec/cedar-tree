@@ -14,9 +14,17 @@ export interface CedarTreeBridge {
     spokenReply: string;
     raw?: unknown;
   }>;
+  startSpeech(): Promise<{ ok: boolean }>;
+  stopSpeech(): Promise<{ ok: boolean }>;
+  onSpeechEvent(cb: (event: { type: string; text: string }) => void): void;
 }
 
 const bridge: CedarTreeBridge = {
+  startSpeech: () => ipcRenderer.invoke("cedar-tree:stt-start"),
+  stopSpeech: () => ipcRenderer.invoke("cedar-tree:stt-stop"),
+  onSpeechEvent: (cb) => {
+    ipcRenderer.on("cedar-tree:stt-event", (_e, payload) => cb(payload));
+  },
   listTools: () => ipcRenderer.invoke("cedar-tree:list-tools"),
   callTool: (name, args) => ipcRenderer.invoke("cedar-tree:call-tool", name, args),
   runCommand: (transcript) => ipcRenderer.invoke("cedar-tree:run-command", transcript),

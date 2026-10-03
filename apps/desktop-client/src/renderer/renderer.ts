@@ -4,7 +4,7 @@
  * through `window.cedarTree` (see preload.ts).
  *
  * Responsibilities:
- * - Speech-to-text via the Web Speech API (`webkitSpeechRecognition`),
+ * - Speech-to-text via the main process (offline Windows System.Speech),
  *   showing a live transcript.
  * - Text-to-speech via `SpeechSynthesis` for spoken replies.
  * - A lightweight camera "presence" heuristic via `getUserMedia` + a
@@ -64,61 +64,28 @@ async function initMcpStatus(): Promise<void> {
 
 // --- Speech-to-text ----------------------------------------------------
 
-const SpeechRecognitionCtor = window.SpeechRecognition ?? window.webkitSpeechRecognition;
-let recognition: InstanceType<NonNullable<typeof SpeechRecognitionCtor>> | null = null;
 let listening = false;
 
-function setupRecognition(): void {
-  if (!SpeechRecognitionCtor) {
-    setPill(statusMic, "Mic: unsupported", "error");
-    btnMic.disabled = true;
-    log("Web Speech API (webkitSpeechRecognition) is not available in this build.");
-    return;
+window.cedarTree.onSpeechEvent((event) => {
+  if (event.type === "ready") {
+    setPill(statusMic, "Mic: listening", "ok");
+  } else if (event.type === "final") {
+    const text = event.text.trim();
+    if (text) {
+      transcriptEl.textContent = text;
+      void handleFinalTranscript(text);
+    }
+  } else if (event.type === "error") {
+    log(`Speech recognition error: ${event.text}`);
+    setPill(statusMic, "Mic: error", "error");
+    listening = false;
+    btnMic.textContent = "🎤 Start listening";
+    btnMic.classList.remove("active");
+  } else if (event.type === "ended" && listening) {
+    log("Speech engine stopped unexpectedly; restarting...");
+    void window.cedarTree.startSpeech();
   }
-
-  recognition = new SpeechRecognitionCtor();
-  recognition.continuous = true;
-  recognition.interimResults = true;
-  recognition.lang = "en-US";
-
-  recognition.onresult = (event) => {
-    let interim = "";
-    let finalText = "";
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      const result = event.results[i];
-      const text = result[0]?.transcript ?? "";
-      if (result.isFinal) {
-        finalText += text;
-      } else {
-        interim += text;
-      }
-    }
-    if (finalText.trim()) {
-      transcriptEl.textContent = finalText.trim();
-      void handleFinalTranscript(finalText.trim());
-    } else if (interim.trim()) {
-      transcriptEl.textContent = interim.trim();
-    }
-  };
-
-  recognition.onerror = (event) => {
-    log(`Speech recognition error: ${(event as any).error ?? "unknown"}`);
-  };
-
-  recognition.onend = () => {
-    // Chromium's continuous recognition can stop on its own (e.g. network
-    // hiccups); restart automatically while the user still wants to listen.
-    if (listening) {
-      try {
-        recognition?.start();
-      } catch {
-        /* already starting */
-      }
-    } else {
-      setPill(statusMic, "Mic: idle");
-    }
-  };
-}
+});
 
 async function handleFinalTranscript(transcript: string): Promise<void> {
   log(`Heard: "${transcript}"`);
@@ -134,15 +101,15 @@ async function handleFinalTranscript(transcript: string): Promise<void> {
 }
 
 btnMic.addEventListener("click", () => {
-  if (!recognition) return;
   listening = !listening;
   if (listening) {
-    recognition.start();
-    setPill(statusMic, "Mic: listening", "ok");
+    setPill(statusMic, "Mic: starting...", "warn");
+    void window.cedarTree.startSpeech();
     btnMic.textContent = "🛑 Stop listening";
     btnMic.classList.add("active");
   } else {
-    recognition.stop();
+    void window.cedarTree.stopSpeech();
+    setPill(statusMic, "Mic: idle");
     btnMic.textContent = "🎤 Start listening";
     btnMic.classList.remove("active");
   }
@@ -226,5 +193,4 @@ btnCamera.addEventListener("click", () => void toggleCamera());
 
 // --- Init ---------------------------------------------------------------
 
-setupRecognition();
 void initMcpStatus();
