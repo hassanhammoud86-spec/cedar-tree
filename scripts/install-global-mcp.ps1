@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
   Registers the Cedar Tree MCP server globally for the current Windows user, so it
   is automatically available to GitHub Copilot agent mode in every workspace opened
@@ -21,7 +21,7 @@
 
 .PARAMETER WorkspaceRoot
   Optional workspace root the server should default to via CEDAR_TREE_WORKSPACE_ROOT
-  when no per-project override is supplied by the client. Defaults to RepoPath.
+  ("*" = unrestricted, any folder; or folders separated by ";"). Defaults to "*" so the agent can work on any Visual Studio solution.
 
 .EXAMPLE
   # From anywhere, using the checked-out repo's own scripts folder:
@@ -73,7 +73,7 @@ if (-not $RepoPath) {
   $RepoPath = Split-Path -Parent $scriptDir
 }
 $RepoPath = (Resolve-Path $RepoPath).Path
-if (-not $WorkspaceRoot) { $WorkspaceRoot = $RepoPath }
+if (-not $WorkspaceRoot) { $WorkspaceRoot = "*" }
 
 $serverEntryPath = Join-Path $RepoPath "dist\server.js"
 if (-not (Test-Path $serverEntryPath)) {
