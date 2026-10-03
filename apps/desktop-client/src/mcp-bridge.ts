@@ -11,6 +11,8 @@
  * same tool implementations the MCP server exposes to Copilot.
  */
 import { ipcMain } from "electron";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 type ToolHandler = (args: any) => Promise<any> | any;
 
@@ -37,8 +39,12 @@ async function loadToolHandlers(): Promise<Record<string, ToolHandler>> {
   // read from a plain variable rather than a string literal - that keeps
   // TypeScript from trying (and failing) to statically resolve a file that
   // doesn't exist until after the build's copy-assets step runs.
-  const cedarTreeToolsPath: string = "./cedar-tree/tools/index.js";
-  const { allToolModules } = (await import(cedarTreeToolsPath)) as {
+  // tsc (module: CommonJS) rewrites `import()` into `require()`, which cannot
+  // load ESM, so the native dynamic import is created via Function to survive
+  // compilation untouched. Needs an absolute file URL for the same reason.
+  const cedarTreeToolsUrl = pathToFileURL(path.join(__dirname, "cedar-tree", "tools", "index.js")).href;
+  const nativeImport = new Function("u", "return import(u)") as (u: string) => Promise<unknown>;
+  const { allToolModules } = (await nativeImport(cedarTreeToolsUrl)) as {
     allToolModules: Array<(r: FakeToolRegistry) => void>;
   };
   for (const registerModule of allToolModules) {
