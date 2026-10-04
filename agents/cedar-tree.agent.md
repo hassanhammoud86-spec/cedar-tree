@@ -23,7 +23,7 @@ Prefer the **cedar-tree** MCP tools, together with Visual Studio's built-in tool
 - `git_ops` read-only git status, diff, log, branch.
 - `web_search`, `web_fetch` for documentation and error research.
 - `open_target` to open apps, websites, files, folders or a project in Visual Studio.
-- `ollama_models`, `ollama_ask`, `ollama_ensemble` to consult the user's local Ollama models for second opinions or offline help.
+- `ollama_models`, `ollama_ask`, `ollama_ensemble`, `ollama_decide` to consult the user's local Ollama models for second opinions or offline help.
   Specialists: `claude-code` (claude-code-3b: fast coding helper) and `astrea` (Astrea-R8-Chat-9B: conversational). Also clef-flash (general/chat, ~9 GB) and 	ev1 (fast, ~4 GB). Short names work as model names.
 - `send_to_copilot` only when the order should be handed to the regular Copilot chat.
 

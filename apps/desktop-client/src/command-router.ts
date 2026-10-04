@@ -69,12 +69,32 @@ export async function routeCommand(transcript: string): Promise<RouteResult> {
     }
 
     // "ask ollama X" / "ask astrea X" / "ask claude code X" -> a single local model.
-    if ((match = text.match(/^ask\s+(ollama|astrea|claude[\s-]?code|clef(?:[\s-]?flash)?|tev[\s-]?1)\s*(?:to\s+|about\s+|:)?\s*(.+)$/i))) {
-      const who = match[1].toLowerCase().replace(/\s+/g, "-").replace(/^tev-1$/, "tev1").replace(/^clef$/, "clef-flash");
+    if ((match = text.match(/^ask\s+(ollama|astrea|claude[\s-]?code)\s*(?:to\s+|about\s+|:)?\s*(.+)$/i))) {
+      const who = match[1].toLowerCase().replace(/\s+/g, "-");
       const model = who === "ollama" ? "auto" : who;
-      const kind = who === "astrea" || who === "clef-flash" ? "chat" : who === "tev1" ? "fast" : "code";
+      const kind = who === "astrea" ? "chat" : "code";
       const result = await callTool("ollama_ask", { prompt: match[2].trim(), model, kind });
       return { transcript, matchedTool: "ollama_ask", spokenReply: truncate(textOf(result), 600), raw: result };
+    }
+    // "ask tev1 <yes/no question>" / "decide <question>" -> decision model (clef-flash, tev1) as a true/false judge.
+    if ((match = text.match(/^(?:ask\s+(tev[\s-]?1|clef(?:[\s-]?flash)?)|decide(?:\s+with\s+(tev[\s-]?1|clef(?:[\s-]?flash)?))?)\s*(?:to\s+|about\s+|:)?\s*(.+)$/i))) {
+      const who = (match[1] ?? match[2] ?? "auto").toLowerCase().replace(/[\s-]+/g, "");
+      const model = who.startsWith("tev") ? "tev1" : who.startsWith("clef") ? "clef-flash" : "auto";
+      const q = match[3].trim();
+      const result = await callTool("ollama_decide", {
+        state: q,
+        questions: { answer: { type: "noul", instructions: `Is the following true or should the answer be yes? ${q}` } },
+        model,
+      });
+      let reply = textOf(result);
+      try {
+        const data = JSON.parse(reply);
+        const p = data.answers?.answer?.noul;
+        if (typeof p === "number") reply = `${p >= 0.5 ? "Yes" : "No"} (${Math.round((p >= 0.5 ? p : 1 - p) * 100)}% sure, ${data.model})`;
+      } catch {
+        /* keep raw text */
+      }
+      return { transcript, matchedTool: "ollama_decide", spokenReply: truncate(reply, 400), raw: result };
     }
     if (/^(list|show)( the)? files?$/i.test(text)) {
       const command = process.platform === "win32" ? "dir" : "ls -la";

@@ -173,4 +173,4 @@ Tools `ollama_models`, `ollama_ask` and `ollama_ensemble` use every model instal
 
 Newly added local models `hisparshmishra1/claude-code-3b` (code/fast) and `fauxpaslife/Astrea-R8-Chat-9B` (chat) are used automatically; short names like `claude-code` / `astrea` work. Desktop app orders: `list models`, `ask all models <question>`, `ask astrea <question>`, `ask claude code <question>`, `ask ollama <question>`.
 
-Also auto-discovered: clef-flash (~9 GB, multimodal; chat/code) and 	ev1:4b (~4 GB; fast). Short names clef, clef-flash, 	ev1 work; desktop: sk clef <question>, sk tev1 <question>. Both are in the default ensemble (models run 2 at a time, 20 GB cap).
+Decision models `clef-flash` (~9 GB, multimodal) and `tev1:4b` (~4 GB) (any model with Ollama's `decision` capability, found via `/api/show`) are not chat models: use the `ollama_decide` tool (`/v1/systemone`; questions of type choice / noul (true-false) / score). `ollama_ask`, auto routing and the default ensemble skip them. Short names `clef` and `tev1` work. Desktop: `ask tev1 <yes/no question>`, `ask clef <question>`, `decide <question>`.

@@ -10,7 +10,7 @@ import { jsonResult, textResult } from "../registry.js";
 
 const HOST = (process.env["OLLAMA_HOST"] ?? "http://127.0.0.1:11434").replace(/\/+$/, "").replace(/^(?!https?:)/, "http://");
 
-interface OllamaModel { name: string; size: number }
+interface OllamaModel { name: string; size: number; decision?: boolean }
 
 async function api(path: string, body?: unknown, timeoutMs = 300_000): Promise<any> {
   const res = await fetch(`${HOST}${path}`, {
@@ -25,7 +25,25 @@ async function api(path: string, body?: unknown, timeoutMs = 300_000): Promise<a
 
 export async function listModels(): Promise<OllamaModel[]> {
   const data = await api("/api/tags", undefined, 8000);
-  return (data.models ?? []).map((m: any) => ({ name: m.name as string, size: (m.size as number) ?? 0 }));
+  const models: OllamaModel[] = (data.models ?? []).map((m: any) => ({ name: m.name as string, size: (m.size as number) ?? 0 }));
+  await Promise.all(models.map(async (m) => (m.decision = await isDecisionModel(m.name))));
+  return models;
+}
+
+// Decision models (clef-flash, tev1, nimble, ...) advertise the "decision" capability and only speak /v1/systemone.
+const decisionCache = new Map<string, boolean>();
+async function isDecisionModel(name: string): Promise<boolean> {
+  const hit = decisionCache.get(name);
+  if (hit !== undefined) return hit;
+  let is = false;
+  try {
+    const info = await api("/api/show", { model: name }, 8000);
+    is = Array.isArray(info.capabilities) && info.capabilities.includes("decision");
+  } catch {
+    return false;
+  }
+  decisionCache.set(name, is);
+  return is;
 }
 
 const isCloud = (m: OllamaModel) => m.name.endsWith(":cloud") || m.size === 0;
@@ -40,7 +58,7 @@ const KIND_HINTS: Record<string, RegExp> = {
 };
 
 function pickModel(models: OllamaModel[], kind: string): OllamaModel | undefined {
-  const local = models.filter((m) => !isCloud(m) && !/ollamik/i.test(m.name));
+  const local = models.filter((m) => !isCloud(m) && !m.decision && !/ollamik/i.test(m.name));
   const maxGb = kind === "fast" ? 8 : kind === "reasoning" ? 45 : 20;
   const pool = local.filter((m) => gb(m) <= maxGb);
   const hinted = pool.filter((m) => KIND_HINTS[kind]?.test(m.name));
@@ -74,9 +92,50 @@ export function register(registry: ToolRegistry): void {
     handler: async () => {
       try {
         const models = await listModels();
-        return jsonResult(models.map((m) => ({ name: m.name, sizeGB: +gb(m).toFixed(1), cloud: isCloud(m) })));
+        return jsonResult(models.map((m) => ({ name: m.name, sizeGB: +gb(m).toFixed(1), cloud: isCloud(m), type: m.decision ? "decision (use ollama_decide)" : "generative" })));
       } catch (e) {
         return textResult(`Ollama is not reachable at ${HOST}. Start it (ollama serve). ${(e as Error).message}`, true);
+      }
+    },
+  });
+
+  registry.registerTool({
+    name: "ollama_decide",
+    description:
+      "Make fast structured decisions with a local Ollama decision model (clef-flash, tev1, nimble) via /v1/systemone. Give the text to judge as 'state' and named questions of type choice (pick one option), noul (true/false probability) or score (rubric level). Returns the choice/probabilities/confidence per question. Model 'auto' picks tev1, then clef-flash, then any decision model.",
+    inputSchema: {
+      state: z.union([z.string(), z.record(z.unknown()), z.array(z.unknown())]).describe("The text or JSON to judge"),
+      questions: z
+        .record(
+          z.object({
+            type: z.enum(["choice", "noul", "score"]),
+            instructions: z.string(),
+            criteria: z.union([z.record(z.string().nullable()), z.array(z.string())]).optional()
+              .describe("choice: {option: description|null}; noul: optional {true,false}; score: array of level descriptions, lowest first"),
+          }),
+        )
+        .describe("1-64 named questions"),
+      model: z.string().default("auto").describe("Decision model name or short alias (clef, tev1) or 'auto'"),
+      images: z.array(z.string()).optional().describe("Base64 PNG/JPEG/WebP images (clef-flash only)"),
+      timeoutSeconds: z.number().int().min(5).max(900).default(180),
+    },
+    handler: async ({ state, questions, model, images, timeoutSeconds }) => {
+      try {
+        const all = await listModels();
+        const decision = all.filter((m) => m.decision);
+        if (!decision.length) return textResult("No decision models installed (try: ollama pull tev1:4b / clef-flash).", true);
+        let name = model as string;
+        if (!name || name === "auto") {
+          const pref = (images?.length ? [/clef/i] : [/tev1/i, /clef/i]).flatMap((re) => decision.filter((m) => re.test(m.name)));
+          name = (pref[0] ?? decision[0]).name;
+        } else {
+          name = await resolveName(name);
+          if (!decision.some((m) => m.name === name)) return textResult(`${name} is not a decision model. Decision models: ${decision.map((m) => m.name).join(", ")}`, true);
+        }
+        const data = await api("/v1/systemone", { model: name, state, questions, ...(images?.length ? { images } : {}) }, timeoutSeconds * 1000);
+        return jsonResult({ model: name, answers: data.answers, usage: data.usage });
+      } catch (e) {
+        return textResult(`ollama_decide failed: ${(e as Error).message}`, true);
       }
     },
   });
@@ -101,6 +160,9 @@ export function register(registry: ToolRegistry): void {
           name = picked.name;
         }
         name = await resolveName(name);
+        if (await isDecisionModel(name)) {
+          return textResult(`${name} is a decision model (choice / true-false / score), not a chat model. Use ollama_decide with model "${name}".`, true);
+        }
         const answer = await chat(name, prompt, system, timeoutSeconds * 1000);
         return textResult(`[${name}]\n${answer}`);
       } catch (e) {
@@ -125,8 +187,8 @@ export function register(registry: ToolRegistry): void {
         const all = await listModels();
         const names: string[] =
           models && models.length
-            ? await Promise.all(models.map(resolveName))
-            : all.filter((m) => !isCloud(m) && !/ollamik|guardian/i.test(m.name) && gb(m) <= maxModelGB).map((m) => m.name);
+            ? (await Promise.all(models.map(resolveName))).filter((n) => !all.find((m) => m.name === n)?.decision)
+            : all.filter((m) => !isCloud(m) && !m.decision && !/ollamik|guardian/i.test(m.name) && gb(m) <= maxModelGB).map((m) => m.name);
         if (!names.length) return textResult("No models selected.", true);
 
         const results: Array<{ model: string; answer?: string; error?: string }> = [];
