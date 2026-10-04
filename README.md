@@ -170,3 +170,5 @@ Extra tools: `open_target` (open apps, files, URLs, folders) and `send_to_copilo
 ### Local Ollama models
 
 Tools `ollama_models`, `ollama_ask` and `ollama_ensemble` use every model installed in your local Ollama (auto-discovered via `http://127.0.0.1:11434`, override with `OLLAMA_HOST`). Ask one model, route by task kind, or run several together and let a judge merge the answers.
+
+Newly added local models `hisparshmishra1/claude-code-3b` (code/fast) and `fauxpaslife/Astrea-R8-Chat-9B` (chat) are used automatically; short names like `claude-code` / `astrea` work. Desktop app orders: `list models`, `ask all models <question>`, `ask astrea <question>`, `ask claude code <question>`, `ask ollama <question>`.

@@ -43,6 +43,39 @@ export async function routeCommand(transcript: string): Promise<RouteResult> {
       }
     }
 
+    if (/^(?:list|show)\s+(?:my\s+|the\s+)?(?:ollama\s+)?models$/i.test(text)) {
+      const result = await callTool("ollama_models", {});
+      let reply = textOf(result);
+      try {
+        const names = (JSON.parse(reply) as Array<{ name: string }>).map((m) => m.name);
+        reply = `${names.length} models: ${names.join(", ")}`;
+      } catch {
+        /* keep raw text */
+      }
+      return { transcript, matchedTool: "ollama_models", spokenReply: truncate(reply, 400), raw: result };
+    }
+
+    // "ask all models X" / "ask everyone X" -> ensemble with a judge.
+    if ((match = text.match(/^ask\s+(?:all|every)\s*(?:ollama\s+)?(?:models?|one)?\s*(?:to\s+|about\s+|:)?\s*(.+)$/i))) {
+      const result = await callTool("ollama_ensemble", { prompt: match[1].trim(), judge: "auto" });
+      let reply = textOf(result);
+      try {
+        const data = JSON.parse(reply);
+        reply = data.merged ?? data.results?.map((r: any) => `${r.model}: ${r.answer ?? r.error}`).join("\n") ?? reply;
+      } catch {
+        /* keep raw text */
+      }
+      return { transcript, matchedTool: "ollama_ensemble", spokenReply: truncate(reply, 600), raw: result };
+    }
+
+    // "ask ollama X" / "ask astrea X" / "ask claude code X" -> a single local model.
+    if ((match = text.match(/^ask\s+(ollama|astrea|claude[\s-]?code)\s*(?:to\s+|about\s+|:)?\s*(.+)$/i))) {
+      const who = match[1].toLowerCase().replace(/\s+/, "-");
+      const model = who === "ollama" ? "auto" : who;
+      const kind = who === "astrea" ? "chat" : "code";
+      const result = await callTool("ollama_ask", { prompt: match[2].trim(), model, kind });
+      return { transcript, matchedTool: "ollama_ask", spokenReply: truncate(textOf(result), 600), raw: result };
+    }
     if (/^(list|show)( the)? files?$/i.test(text)) {
       const command = process.platform === "win32" ? "dir" : "ls -la";
       const result = await callTool("run_shell", { command });

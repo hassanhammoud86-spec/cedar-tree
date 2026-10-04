@@ -32,9 +32,10 @@ const isCloud = (m: OllamaModel) => m.name.endsWith(":cloud") || m.size === 0;
 const gb = (m: OllamaModel) => m.size / 1024 ** 3;
 
 const KIND_HINTS: Record<string, RegExp> = {
-  code: /(qwen|granite|gemma|nimble|ornith|glm)/i,
+  code: /(claude-code|qwen|granite|gemma|nimble|ornith|glm)/i,
   review: /(granite.*guardian|llama3\.3|mistral|gemma)/i,
-  fast: /(lfm|llama3:|granite4\.2|nimble|ornith)/i,
+  chat: /(astrea|llama3|gemma|mistral|qwen)/i,
+  fast: /(claude-code|lfm|llama3:|granite4\.2|nimble|ornith)/i,
   reasoning: /(llama3\.3|mistral-medium|qwen|gemma|glm)/i,
 };
 
@@ -46,10 +47,17 @@ function pickModel(models: OllamaModel[], kind: string): OllamaModel | undefined
   return (hinted.length ? hinted : pool.length ? pool : local).sort((a, b) => b.size - a.size)[0];
 }
 
+async function resolveName(name: string): Promise<string> {
+  const models = await listModels();
+  const q = name.toLowerCase();
+  const hit = models.find((m) => m.name.toLowerCase() === q) ?? models.find((m) => m.name.toLowerCase().includes(q));
+  return hit?.name ?? name;
+}
+
 async function chat(model: string, prompt: string, system?: string, timeoutMs?: number): Promise<string> {
   const messages = [...(system ? [{ role: "system", content: system }] : []), { role: "user", content: prompt }];
   const data = await api("/api/chat", { model, messages, stream: false }, timeoutMs);
-  return String(data.message?.content ?? "").trim();
+  return String(data.message?.content || data.message?.thinking || "").trim();
 }
 
 export function register(registry: ToolRegistry): void {
@@ -70,11 +78,11 @@ export function register(registry: ToolRegistry): void {
   registry.registerTool({
     name: "ollama_ask",
     description:
-      "Ask a local Ollama model. model = exact name from ollama_models, or 'auto' to choose by kind (code, review, fast, reasoning). Good for second opinions, drafts, and offline work.",
+      "Ask a local Ollama model. model = exact name from ollama_models, or 'auto' to choose by kind (code, review, fast, reasoning, chat). Good for second opinions, drafts, and offline work.",
     inputSchema: {
       prompt: z.string().describe("The question or task"),
       model: z.string().default("auto").describe("Model name or 'auto'"),
-      kind: z.enum(["code", "review", "fast", "reasoning"]).default("code").describe("Used when model is 'auto'"),
+      kind: z.enum(["code", "review", "fast", "reasoning", "chat"]).default("code").describe("Used when model is 'auto'"),
       system: z.string().optional().describe("Optional system prompt"),
       timeoutSeconds: z.number().int().min(5).max(1800).default(300),
     },
@@ -86,6 +94,7 @@ export function register(registry: ToolRegistry): void {
           if (!picked) return textResult("No local Ollama models found.", true);
           name = picked.name;
         }
+        name = await resolveName(name);
         const answer = await chat(name, prompt, system, timeoutSeconds * 1000);
         return textResult(`[${name}]\n${answer}`);
       } catch (e) {
@@ -110,7 +119,7 @@ export function register(registry: ToolRegistry): void {
         const all = await listModels();
         const names: string[] =
           models && models.length
-            ? models
+            ? await Promise.all(models.map(resolveName))
             : all.filter((m) => !isCloud(m) && !/ollamik|guardian/i.test(m.name) && gb(m) <= maxModelGB).map((m) => m.name);
         if (!names.length) return textResult("No models selected.", true);
 
