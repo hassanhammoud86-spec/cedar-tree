@@ -32,10 +32,10 @@ const isCloud = (m: OllamaModel) => m.name.endsWith(":cloud") || m.size === 0;
 const gb = (m: OllamaModel) => m.size / 1024 ** 3;
 
 const KIND_HINTS: Record<string, RegExp> = {
-  code: /(claude-code|qwen|granite|gemma|nimble|ornith|glm)/i,
+  code: /(claude-code|clef|tev1|qwen|granite|gemma|nimble|ornith|glm)/i,
   review: /(granite.*guardian|llama3\.3|mistral|gemma)/i,
-  chat: /(astrea|llama3|gemma|mistral|qwen)/i,
-  fast: /(claude-code|lfm|llama3:|granite4\.2|nimble|ornith)/i,
+  chat: /(astrea|clef|tev1|llama3|gemma|mistral|qwen)/i,
+  fast: /(claude-code|tev1|lfm|llama3:|granite4\.2|nimble|ornith)/i,
   reasoning: /(llama3\.3|mistral-medium|qwen|gemma|glm)/i,
 };
 
@@ -50,14 +50,20 @@ function pickModel(models: OllamaModel[], kind: string): OllamaModel | undefined
 async function resolveName(name: string): Promise<string> {
   const models = await listModels();
   const q = name.toLowerCase();
-  const hit = models.find((m) => m.name.toLowerCase() === q) ?? models.find((m) => m.name.toLowerCase().includes(q));
+  const hit = models.find((m) => m.name.toLowerCase() === q) ?? models.find((m) => m.name.toLowerCase().replace(/[:\-_ ]/g, "") .startsWith(q.replace(/[:\-_ ]/g, ""))) ?? models.find((m) => m.name.toLowerCase().includes(q));
   return hit?.name ?? name;
 }
 
 async function chat(model: string, prompt: string, system?: string, timeoutMs?: number): Promise<string> {
   const messages = [...(system ? [{ role: "system", content: system }] : []), { role: "user", content: prompt }];
-  const data = await api("/api/chat", { model, messages, stream: false }, timeoutMs);
-  return String(data.message?.content || data.message?.thinking || "").trim();
+  try {
+    const data = await api("/api/chat", { model, messages, stream: false }, timeoutMs);
+    return String(data.message?.content || data.message?.thinking || "").trim();
+  } catch (e) {
+    if (!/does not support chat/i.test((e as Error).message)) throw e;
+    const gen = await api("/api/generate", { model, prompt, ...(system ? { system } : {}), stream: false }, timeoutMs);
+    return String(gen.response || gen.thinking || "").trim();
+  }
 }
 
 export function register(registry: ToolRegistry): void {

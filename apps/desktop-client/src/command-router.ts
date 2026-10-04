@@ -69,10 +69,10 @@ export async function routeCommand(transcript: string): Promise<RouteResult> {
     }
 
     // "ask ollama X" / "ask astrea X" / "ask claude code X" -> a single local model.
-    if ((match = text.match(/^ask\s+(ollama|astrea|claude[\s-]?code)\s*(?:to\s+|about\s+|:)?\s*(.+)$/i))) {
-      const who = match[1].toLowerCase().replace(/\s+/, "-");
+    if ((match = text.match(/^ask\s+(ollama|astrea|claude[\s-]?code|clef(?:[\s-]?flash)?|tev[\s-]?1)\s*(?:to\s+|about\s+|:)?\s*(.+)$/i))) {
+      const who = match[1].toLowerCase().replace(/\s+/g, "-").replace(/^tev-1$/, "tev1").replace(/^clef$/, "clef-flash");
       const model = who === "ollama" ? "auto" : who;
-      const kind = who === "astrea" ? "chat" : "code";
+      const kind = who === "astrea" || who === "clef-flash" ? "chat" : who === "tev1" ? "fast" : "code";
       const result = await callTool("ollama_ask", { prompt: match[2].trim(), model, kind });
       return { transcript, matchedTool: "ollama_ask", spokenReply: truncate(textOf(result), 600), raw: result };
     }
@@ -135,7 +135,7 @@ function textOf(result: any): string {
 }
 
 function truncate(text: string, max: number): string {
-  return text.length > max ? `${text.slice(0, max)}…` : text;
+  return text.length > max ? `${text.slice(0, max)}â€¦` : text;
 }
 
 function summarizeShell(result: any): string {
