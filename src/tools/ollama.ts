@@ -92,7 +92,7 @@ export function register(registry: ToolRegistry): void {
     handler: async () => {
       try {
         const models = await listModels();
-        return jsonResult(models.map((m) => ({ name: m.name, sizeGB: +gb(m).toFixed(1), cloud: isCloud(m), type: m.decision ? "decision (use ollama_decide)" : "generative" })));
+        return jsonResult(models.map((m) => ({ name: m.name, sizeGB: +gb(m).toFixed(1), cloud: isCloud(m), offline: !isCloud(m), type: m.decision ? "decision (use ollama_decide)" : "generative", note: isCloud(m) ? "cloud model: needs internet + Ollama account" : gb(m) > 30 ? "very large: slow or may not fit in RAM" : /clef-flash/i.test(m.name) ? "known upstream bug in Ollama 0.35.1 (non-finite logit)" : undefined })));
       } catch (e) {
         return textResult(`Ollama is not reachable at ${HOST}. Start it (ollama serve). ${(e as Error).message}`, true);
       }
