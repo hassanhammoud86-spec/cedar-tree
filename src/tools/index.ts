@@ -13,6 +13,7 @@ import { register as registerWeb } from "./web.js";
 import { register as registerOpenTarget } from "./open-target.js";
 import { register as registerCopilotBridge } from "./copilot-bridge.js";
 import { register as registerOllama } from "./ollama.js";
+import { register as registerOllamaAgent } from "./ollama-agent.js";
 
 export const allToolModules: ToolModule[] = [
   registerFileIo,
@@ -24,4 +25,5 @@ export const allToolModules: ToolModule[] = [
   registerOpenTarget,
   registerCopilotBridge,
   registerOllama,
+  registerOllamaAgent,
 ];

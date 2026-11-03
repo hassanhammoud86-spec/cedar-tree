@@ -16,8 +16,14 @@ import { pathToFileURL } from "node:url";
 
 type ToolHandler = (args: any) => Promise<any> | any;
 
+interface FakeToolDef {
+  name: string;
+  handler: ToolHandler;
+}
+
 interface FakeToolRegistry {
-  registerTool(def: { name: string; handler: ToolHandler }): void;
+  registerTool(def: FakeToolDef): void;
+  getTool(name: string): FakeToolDef | undefined;
 }
 
 let cachedHandlers: Record<string, ToolHandler> | null = null;
@@ -26,10 +32,13 @@ async function loadToolHandlers(): Promise<Record<string, ToolHandler>> {
   if (cachedHandlers) return cachedHandlers;
 
   const collected: Record<string, ToolHandler> = {};
+  const defs = new Map<string, FakeToolDef>();
   const fakeRegistry: FakeToolRegistry = {
     registerTool(def) {
       collected[def.name] = def.handler;
+      defs.set(def.name, def);
     },
+    getTool: (name) => defs.get(name),
   };
 
   // cedar-tree is an ESM package (compiled dist/), imported dynamically so

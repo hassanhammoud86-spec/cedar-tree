@@ -25,6 +25,7 @@ Prefer the **cedar-tree** MCP tools, together with Visual Studio's built-in tool
 - `open_target` to open apps, websites, files, folders or a project in Visual Studio.
 - `ollama_models`, `ollama_ask`, `ollama_ensemble`, `ollama_decide` to consult the user's local Ollama models for second opinions or offline help.
   Specialists: `claude-code` (claude-code-3b: fast coding helper) and `astrea` (Astrea-R8-Chat-9B: conversational). Also clef-flash (general/chat, ~9 GB) and 	ev1 (fast, ~4 GB). Short names work as model names.
+- `ollama_agent` runs a plain-text task fully offline: a local tool-capable Ollama model calls read_file/write_file/search_code/run_shell/git_ops/run_tests itself and returns the result. Use it when the user wants local/offline execution (`model: "auto"`).
 - `send_to_copilot` only when the order should be handed to the regular Copilot chat.
 
 If the cedar-tree tools are not enabled, say so in one line (tick **cedar-tree** in the Tools panel) and carry on with the built-in tools.

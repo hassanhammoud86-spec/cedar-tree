@@ -10,9 +10,9 @@ import { jsonResult, textResult } from "../registry.js";
 
 const HOST = (process.env["OLLAMA_HOST"] ?? "http://127.0.0.1:11434").replace(/\/+$/, "").replace(/^(?!https?:)/, "http://");
 
-interface OllamaModel { name: string; size: number; decision?: boolean }
+export interface OllamaModel { name: string; size: number; decision?: boolean }
 
-async function api(path: string, body?: unknown, timeoutMs = 300_000): Promise<any> {
+export async function api(path: string, body?: unknown, timeoutMs = 300_000): Promise<any> {
   const res = await fetch(`${HOST}${path}`, {
     method: body ? "POST" : "GET",
     headers: body ? { "Content-Type": "application/json" } : undefined,
@@ -46,8 +46,8 @@ async function isDecisionModel(name: string): Promise<boolean> {
   return is;
 }
 
-const isCloud = (m: OllamaModel) => m.name.endsWith(":cloud") || m.size === 0;
-const gb = (m: OllamaModel) => m.size / 1024 ** 3;
+export const isCloud = (m: OllamaModel) => m.name.endsWith(":cloud") || m.size === 0;
+export const gb = (m: OllamaModel) => m.size / 1024 ** 3;
 
 const KIND_HINTS: Record<string, RegExp> = {
   code: /(claude-code|clef|tev1|qwen|granite|gemma|nimble|ornith|glm)/i,
@@ -65,7 +65,7 @@ function pickModel(models: OllamaModel[], kind: string): OllamaModel | undefined
   return (hinted.length ? hinted : pool.length ? pool : local).sort((a, b) => b.size - a.size)[0];
 }
 
-async function resolveName(name: string): Promise<string> {
+export async function resolveName(name: string): Promise<string> {
   const models = await listModels();
   const q = name.toLowerCase();
   const hit = models.find((m) => m.name.toLowerCase() === q) ?? models.find((m) => m.name.toLowerCase().replace(/[:\-_ ]/g, "") .startsWith(q.replace(/[:\-_ ]/g, ""))) ?? models.find((m) => m.name.toLowerCase().includes(q));
