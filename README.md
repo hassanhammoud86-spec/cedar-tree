@@ -103,6 +103,24 @@ at the solution root (or `%USERPROFILE%\.mcp.json` for a user-wide config):
 
 Reopen the solution and Copilot Chat's tool picker should list Cedar Tree's tools.
 
+### Using local Ollama models from Visual Studio
+
+Visual Studio only offers local Ollama models in **Agent Preview** mode; standard and custom agent modes may switch back to cloud models. Local models also stall on large prompts, and every tool schema is part of that prompt. Limit what Cedar Tree exposes with `CEDAR_TREE_TOOLS` in the `env` block:
+
+- unset or `all`: every tool (default)
+- `local`: only `read_file`, `write_file`, `search_code`, `run_shell`, `git_ops`, `run_tests`, `ollama_agent`
+- a comma-separated list, e.g. `read_file,search_code`
+
+```json
+"env": { "CEDAR_TREE_TOOLS": "local" }
+```
+
+Restart the server after changing it.
+
+#### `ollama_agent`: text instruction to local model to tools, fully offline
+
+Whatever model Visual Studio uses, you can say "use ollama_agent to <task>". Cedar Tree then runs the loop itself: it sends the task plus the core tool schemas to a local Ollama model over `/api/chat` (`model: "auto"` picks a tool-capable local model; `CEDAR_TREE_OLLAMA_MODEL` or the `cedar-tree-*` profiles are preferred; or pass an exact name). It executes only structured `tool_calls` the model returns, feeds results back, and returns the final answer plus the steps taken. Models without Ollama's `tools` capability are rejected with the list of capable ones; there is no cloud fallback. It uses `num_ctx` 8192 by default to avoid stalls. Note the Visual Studio chat model itself must still be able to call `ollama_agent`; in Agent Preview you can select a local model for that. Start with a tiny instruction (e.g. "read package.json") to confirm the model actually issues MCP tool calls; Cedar Tree never converts model prose into tool calls.
+
 ## Registering Cedar Tree globally (one-time, all workspaces)
 
 Instead of adding `.vscode/mcp.json` to every project, you can register Cedar Tree

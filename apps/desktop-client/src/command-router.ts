@@ -128,8 +128,26 @@ export async function routeCommand(transcript: string): Promise<RouteResult> {
     return { transcript, matchedTool: null, spokenReply: `Something went wrong: ${message}` };
   }
 
-  // Anything not understood locally is an order for Copilot agent in Visual
-  // Studio, which has every Cedar Tree tool and can handle free-form requests.
+  // Free-form orders run fully offline: a local Ollama model drives Cedar Tree's
+  // tools via ollama_agent. Only an explicit "ask copilot ..." goes to Visual Studio.
+  const explicitCopilot = /^(?:please\s+)?(?:ask|tell)\s+copilot\b/i.test(text);
+  if (!explicitCopilot) {
+    try {
+      const result = await callTool("ollama_agent", { task: text, model: "auto" });
+      const out = textOf(result);
+      let reply = out;
+      try {
+        reply = (JSON.parse(out) as { answer?: string }).answer || out;
+      } catch {
+        /* plain error text */
+      }
+      return { transcript, matchedTool: "ollama_agent", spokenReply: truncate(reply, 600), raw: result };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { transcript, matchedTool: null, spokenReply: `Local agent failed: ${message}` };
+    }
+  }
+
   try {
     const prompt = text.replace(/^(?:please\s+)?(?:ask|tell)\s+copilot\s+(?:to\s+)?/i, "");
     const result = await callTool("send_to_copilot", { text: prompt });
