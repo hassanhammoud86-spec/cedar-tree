@@ -29,6 +29,17 @@ const SYSTEM_PROMPT =
   "Call a tool when you need files, search, shell or git; do not claim to have done something you did not do with a tool. " +
   "When finished, reply with a short summary of what you did.";
 
+export function decodeJsonStrings(args: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(args)) {
+    if (typeof v === "string" && /^\s*(\[|\{|-?\d|true$|false$)/.test(v)) {
+      try { out[k] = JSON.parse(v); continue; } catch { /* keep original string */ }
+    }
+    out[k] = v;
+  }
+  return out;
+}
+
 export function toolSpecs(defs: ToolDefinition[]): unknown[] {
   return defs.map((d) => {
     const schema = zodToJsonSchema(z.object(d.inputSchema), { target: "openApi3", $refStrategy: "none" }) as Record<string, unknown>;
@@ -71,7 +82,14 @@ export async function runAgent(opts: {
       if (!def) {
         text = `Unknown tool "${name}". Available: ${[...byName.keys()].join(", ")}`;
       } else {
-        const parsed = z.object(def.inputSchema).safeParse(args ?? {});
+        const schema = z.object(def.inputSchema);
+        let parsed = schema.safeParse(args ?? {});
+        if (!parsed.success && args && typeof args === "object") {
+          // Small models often send arrays/numbers/booleans as JSON-encoded strings; retry once with those decoded.
+          const decoded = decodeJsonStrings(args as Record<string, unknown>);
+          const retry = schema.safeParse(decoded);
+          if (retry.success) parsed = retry;
+        }
         if (!parsed.success) {
           text = `Invalid arguments for ${name}: ${parsed.error.issues.map((x) => `${x.path.join(".")}: ${x.message}`).join("; ")}`;
         } else {

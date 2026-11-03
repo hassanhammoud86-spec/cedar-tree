@@ -16,6 +16,22 @@ test("toolSpecs produces JSON-schema function specs", () => {
   assert.equal(s.function.parameters.properties.text.type, "string");
 });
 
+test("runAgent decodes JSON-encoded string args when the schema needs arrays/numbers", async () => {
+  const tool = {
+    name: "count",
+    description: "count",
+    inputSchema: { items: z.array(z.string()), n: z.number() },
+    handler: async ({ items, n }: any) => ({ content: [{ type: "text" as const, text: `${items.length}/${n}` }] }),
+  };
+  let turn = 0;
+  const chat = async (): Promise<AgentMessage> =>
+    turn++ === 0
+      ? { role: "assistant", content: "", tool_calls: [{ function: { name: "count", arguments: { items: '["a","b"]', n: "5" } } }] }
+      : { role: "assistant", content: "ok" };
+  const out = await runAgent({ task: "x", chat, tools: [tool] });
+  assert.deepEqual(out.steps.map((s) => [s.ok, s.result]), [[true, "2/5"]]);
+});
+
 test("runAgent executes structured tool calls and returns the final answer", async () => {
   let turn = 0;
   const seen: AgentMessage[][] = [];
